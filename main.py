@@ -1,5 +1,6 @@
 from lib.LR import LinearRegression
 from lib.SVM import SVMPredict, SVMTrain
+from lib.KNN import KNNRegression
 import pandas as pd
 import streamlit as st
 
@@ -95,7 +96,13 @@ def SVM():
     with st.form(key=target):
         sex_options = {"F": 0, "M": 1}
         guardian_options = {"mother": 0, "father": 1, "other": 2}
-        Fjob_options = {"teacher": 0, "health": 1, "services": 2, "at_home": 3, "other": 4}
+        Fjob_options = {
+            "teacher": 0,
+            "health": 1,
+            "services": 2,
+            "at_home": 3,
+            "other": 4,
+        }
 
         sex = st.selectbox("性別", options=sex_options.keys())
         guardian = st.selectbox("監護人", options=guardian_options.keys())
@@ -140,10 +147,103 @@ def SVM():
 def RF(): ...
 
 
-def KNN(): ...
+def KNN():
+    tab1, tab2 = st.tabs([WALC, DALC])
+
+    with tab1:
+        target = "Walc"
+        with st.form(key=target):
+            nursery = st.selectbox("是否上過幼兒園", ["no", "yes"])
+            Fjob = st.selectbox(
+                "父親的職業", ["teacher", "health", "services", "at_home", "other"]
+            )
+            absences = st.number_input("缺席次數", min_value=0, max_value=100, value=0)
+            guardian = st.selectbox("監護人", ["mother", "father", "other"])
+            Medu = st.selectbox("母親的教育程度", [0, 1, 2, 3, 4])
+            Fedu = st.selectbox("父親的教育程度", [0, 1, 2, 3, 4])
+            studytime = st.selectbox("每週學習時間", [1, 2, 3, 4])
+            health = st.selectbox("健康狀況", [1, 2, 3, 4, 5])
+            sex = st.selectbox("性別", ["F", "M"])
+            famrel = st.selectbox("家庭關係", [1, 2, 3, 4, 5])
+            goout = st.selectbox("每週出去玩的時間", [1, 2, 3, 4, 5])
+            Dalc = st.selectbox("平日飲酒量", [1, 2, 3, 4, 5])
+
+            submit_button = st.form_submit_button(label="提交")
+
+        if submit_button:
+            inputs = {
+                "nursery[T.yes]": 1 if nursery == "yes" else 0,
+                "Fjob[T.other]": 1 if Fjob == "other" else 0,
+                "absences": absences,
+                "Fjob[T.services]": 1 if Fjob == "services" else 0,
+                "guardian[T.other]": 1 if guardian == "other" else 0,
+                "Medu": Medu,
+                "Fedu": Fedu,
+                "studytime": studytime,
+                "health": health,
+                "sex[T.M]": 1 if sex == "M" else 0,
+                "famrel": famrel,
+                "goout": goout,
+                "Dalc": Dalc,
+            }
+
+            df = pd.read_excel(TRAIN_DATA)
+            knn_reg = KNNRegression(df, target=target, n_neighbors=5)
+            prediction = knn_reg.predict(inputs)
+            mean_rmse, std_rmse = knn_reg.evaluate_model(cv=5)
+            show_obj = [
+                lambda: st.code(f"Mean RMSE: {mean_rmse:.2f}"),
+                lambda: st.code(f"Std RMSE: {std_rmse:.2f}"),
+            ]
+
+            show_result(prediction, target, show_obj=show_obj)
+
+        with tab2:
+            target = "Dalc"
+            with st.form(key=target):
+                Fedu = st.selectbox("父親的教育程度", [0, 1, 2, 3, 4])
+                freetime = st.selectbox("空閒時間", [1, 2, 3, 4, 5])
+                Mjob = st.selectbox(
+                    "母親的職業", ["teacher", "health", "services", "at_home", "other"]
+                )
+                Medu = st.selectbox("母親的教育程度", [0, 1, 2, 3, 4])
+                reason = st.selectbox(
+                    "選擇學校的理由", ["home", "reputation", "course", "other"]
+                )
+                sex = st.selectbox("性別", ["F", "M"])
+                Walc = st.selectbox("週末飲酒量", [1, 2, 3, 4, 5])
+
+                submit_button = st.form_submit_button(label="提交")
+
+            if submit_button:
+                inputs = {
+                    "Fedu": Fedu,
+                    "freetime": freetime,
+                    "Mjob[T.health]": 1 if Mjob == "health" else 0,
+                    "Medu": Medu,
+                    "reason[T.other]": 1 if reason == "other" else 0,
+                    "sex[T.M]": 1 if sex == "M" else 0,
+                    "Walc": Walc,
+                }
+
+                df = pd.read_excel(TRAIN_DATA)
+                knn_reg = KNNRegression(df, target=target, n_neighbors=5)
+                prediction = knn_reg.predict(inputs)
+                mean_rmse, std_rmse = knn_reg.evaluate_model(cv=5)
+
+                show_obj = [
+                    lambda: st.code(f"Mean RMSE: {mean_rmse:.2f}"),
+                    lambda: st.code(f"Std RMSE: {std_rmse:.2f}"),
+                ]
+
+                show_result(prediction, target, show_obj=show_obj)
 
 
-def show_result(prediction: int | float, target: str, show_obj=None):
+def show_result(
+    prediction: int | float,
+    target: str,
+    show_obj=None,
+):
     st.write(f"根據您的回答，預測的分析結果如下：")
     container = st.container(border=True)
     c1, c2 = container.columns(2)
