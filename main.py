@@ -1,5 +1,5 @@
 from lib.LR import LinearRegression
-from lib.SVM import SVMPredict, SVMTrain
+from lib.SVM import SVM_Walc, SVM_Dalc
 from lib.KNN import KNNRegression
 from lib.RF import RandomForest
 import pandas as pd
@@ -115,8 +115,13 @@ def SVM():
         famrel = st.selectbox("家庭關係", [1, 2, 3, 4, 5])
         goout = st.selectbox("每週出去玩的時間", [1, 2, 3, 4, 5])
         health = st.selectbox("健康狀況", [1, 2, 3, 4, 5])
-        absences = st.number_input("缺席次數", min_value=0, max_value=100, value=0)
+        absences = st.number_input("缺席次數", min_value=0, max_value=93, value=0)
 
+        if target == "Walc":
+            Dalc = st.selectbox("平日飲酒量", [1, 2, 3, 4, 5])
+        else:
+            Walc = st.selectbox("週末飲酒量", [1, 2, 3, 4, 5])
+            
         submit_button = st.form_submit_button(label="提交")
 
     if submit_button:
@@ -132,18 +137,25 @@ def SVM():
             "health": [health],
             "absences": [absences],
         }
-
+        if target == "Walc":
+            inputs["Dalc"] = [Dalc]
+        else:
+            inputs["Walc"] = [Walc]
+            
         # @st.cache_resource
-        def train():
-            svm_train = SVMTrain(pd.read_excel(SVM_TRAIN_DATA), target)
+        def train(target):
+            if target == "Walc":
+                svm_train = SVM_Walc(pd.read_excel(SVM_TRAIN_DATA))
+            else :
+                svm_train = SVM_Dalc(pd.read_excel(SVM_TRAIN_DATA))
+            
             return svm_train, *svm_train.run()
-
-        svm_train, r, img = train()
+            
+        svm_train, r, img = train(target)
         show_obj = [lambda: st.write(r), lambda: st.pyplot(img)]
 
-        using = SVMPredict(svm_train, inputs)
-        predictions = using.predict_new_data()[0]
-        show_result(predictions, target, show_obj)
+        predictions = svm_train.predict(inputs)
+        show_result(predictions[0].astype(int), target, show_obj)
 
 
 def RF():
